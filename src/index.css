@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #F7F2EB;
+  --brown-dark: #2C1A0E;
+  --brown-mid: #5C3D1E;
+  --brown-light: #A0714F;
+  --brown-pale: #E8D5BC;
+  --warm-white: #FDFAF6;
+  --accent: #C17F4A;
+  --text-main: #2C1A0E;
+  --text-muted: #9A7A5C;
+  --tag-bg: #F0E6D6;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Noto Sans SC', sans-serif;
+  color: var(--text-main);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Noto Serif SC', serif;
+}
+
+/* 移动端优化 */
+@viewport {
+  width: device-width;
+}
+
+html {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}

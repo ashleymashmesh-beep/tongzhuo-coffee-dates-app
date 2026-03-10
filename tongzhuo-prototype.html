@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>同桌 · 原型图</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --cream: #F7F2EB;
+    --brown-dark: #2C1A0E;
+    --brown-mid: #5C3D1E;
+    --brown-light: #A0714F;
+    --brown-pale: #E8D5BC;
+    --warm-white: #FDFAF6;
+    --accent: #C17F4A;
+    --text-main: #2C1A0E;
+    --text-muted: #9A7A5C;
+    --tag-bg: #F0E6D6;
+  }
+
+  body {
+    background: #E8DDD0;
+    font-family: 'Noto Sans SC', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── 顶部标题 ── */
+  .site-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .site-header h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px;
+    color: var(--brown-dark);
+    letter-spacing: 4px;
+    margin-bottom: 6px;
+  }
+  .site-header p {
+    font-size: 13px;
+    color: var(--brown-light);
+    letter-spacing: 1px;
+  }
+
+  /* ── 导航标签 ── */
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .nav-tab {
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--brown-pale);
+    background: var(--warm-white);
+    color: var(--text-muted);
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .nav-tab.active {
+    background: var(--brown-dark);
+    color: white;
+    border-color: var(--brown-dark);
+  }
+
+  /* ── 手机外框 ── */
+  .phone-wrap {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1100px;
+    width: 100%;
+  }
+
+  .phone-card {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .phone-card.active { display: flex; }
+
+  .phone-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .phone {
+    width: 320px;
+    background: var(--warm-white);
+    border-radius: 40px;
+    box-shadow: 0 20px 60px rgba(44,26,14,0.18), 0 4px 16px rgba(44,26,14,0.08);
+    overflow: hidden;
+    position: relative;
+    border: 8px solid var(--brown-dark);
+  }
+
+  .phone-notch {
+    background: var(--brown-dark);
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 0 16px 16px;
+    margin: 0 60px;
+  }
+  .phone-notch-dot { width: 8px; height: 8px; background: #555; border-radius: 50%; }
+
+  .phone-screen {
+    min-height: 580px;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── 状态栏 ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--cream);
+  }
+
+  /* ── 页面内容通用 ── */
+  .page-header {
+    padding: 12px 18px 10px;
+    border-bottom: 1px solid var(--brown-pale);
+    background: var(--cream);
+  }
+  .page-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 20px;
+    color: var(--brown-dark);
+    letter-spacing: 2px;
+  }
+  .page-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── 约咖卡片 ── */
+  .meetup-card {
+    background: white;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(44,26,14,0.06);
+    border: 1px solid rgba(232,213,188,0.6);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .meetup-card:active { transform: scale(0.98); }
+  .meetup-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+  .meetup-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .meetup-cafe {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--brown-dark);
+    font-family: 'Noto Serif SC', serif;
+  }
+  .meetup-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: var(--tag-bg);
+    color: var(--brown-mid);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .meetup-badge.full { background: #F5E6E6; color: #A05050; }
+  .meetup-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: var(--tag-bg);
+    color: var(--brown-light);
+  }
+  .meetup-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .meetup-host {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .avatar-tiny {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--brown-pale);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+  }
+  .join-btn {
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 12px;
+    background: var(--brown-dark);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .join-btn.joined {
+    background: var(--tag-bg);
+    color: var(--brown-light);
+  }
+
+  /* ── 浮动按钮 ── */
+  .fab {
+    position: absolute;
+    bottom: 20px;
+    right: 18px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--brown-dark);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 4px 16px rgba(44,26,14,0.3);
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  /* ── 底部导航 ── */
+  .bottom-nav {
+    display: flex;
+    border-top: 1px solid var(--brown-pale);
+    background: var(--warm-white);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0 10px;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .nav-icon { font-size: 18px; }
+  .nav-text { font-size: 9px; color: var(--text-muted); letter-spacing: 0.5px; }
+  .nav-item.active .nav-text { color: var(--brown-dark); font-weight: 600; }
+
+  /* ── 日历 ── */
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px 8px;
+  }
+  .cal-month {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 16px;
+    color: var(--brown-dark);
+  }
+  .cal-nav { color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 4px; }
+  .cal-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 0 14px;
+    margin-bottom: 4px;
+  }
+  .cal-wd {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 2px 0;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    padding: 0 14px 14px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .cal-day.has-photo {
+    background: var(--brown-pale);
+    overflow: hidden;
+  }
+  .cal-day.has-photo img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+  .cal-day.today {
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .cal-day.empty { color: transparent; }
+  .day-num-overlay {
+    position: absolute;
+    bottom: 2px; right: 3px;
+    font-size: 8px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    font-weight: 600;
+  }
+
+  /* 打卡详情弹出 */
+  .checkin-detail {
+    background: white;
+    border-radius: 16px;
+    margin: 0 14px;
+    padding: 14px;
+    box-shadow: 0 2px 12px rgba(44,26,14,0.1);
+    border: 1px solid var(--brown-pale);
+  }
+  .checkin-photo {
+    width: 100%;
+    height: 120px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #D4A97A, #A0714F);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+  .mood-beans {
+    display: flex; gap: 3px; margin-bottom: 6px;
+  }
+  .bean { font-size: 14px; }
+  .checkin-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ── 发布页 ── */
+  .publish-section {
+    padding: 0 14px;
+    margin-bottom: 12px;
+  }
+  .publish-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+  .time-options {
+    display: flex; gap: 6px;
+  }
+  .time-opt {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 10px;
+    border: 1.5px solid var(--brown-pale);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: white;
+  }
+  .time-opt.selected {
+    border-color: var(--brown-dark);
+    background: var(--brown-dark);
+    color: white;
+  }
+  .cafe-search-box {
+    background: white;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid var(--brown-pale);
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .cafe-result {
+    background: white;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--brown-pale);
+    margin-top: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .cafe-result.selected-cafe { border-color: var(--accent); }
+  .cafe-result-name { font-size: 13px; color: var(--brown-dark); font-weight: 500; }
+  .cafe-result-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .activity-opts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  .activity-opt {
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1.5px solid var(--brown-pale);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: white;
+    line-height: 1.4;
+  }
+  .activity-opt.selected {
+    border-color: var(--brown-dark);
+    color: var(--brown-dark);
+    background: #F5EDE3;
+    font-weight: 500;
+  }
+  .people-opts {
+    display: flex; gap: 10px;
+  }
+  .people-opt {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1.5px solid var(--brown-pale);
+    text-align: center;
+    cursor: pointer;
+    background: white;
+  }
+  .people-opt.selected { border-color: var(--brown-dark); background: #F5EDE3; }
+  .people-num { font-size: 20px; font-weight: 700; color: var(--brown-dark); font-family: 'Noto Serif SC', serif; }
+  .people-label { font-size: 10px; color: var(--text-muted); }
+  .publish-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--brown-dark);
+    color: white;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: 'Noto Sans SC', sans-serif;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin: 14px 14px 0;
+    width: calc(100% - 28px);
+  }
+
+  /* ── 个人页 ── */
+  .profile-hero {
+    background: var(--brown-dark);
+    padding: 24px 18px 20px;
+    text-align: center;
+    color: white;
+  }
+  .profile-avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--brown-pale);
+    margin: 0 auto 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .profile-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .profile-bio { font-size: 12px; opacity: 0.7; }
+  .profile-stats {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid var(--brown-pale);
+  }
+  .stat-item {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    border-right: 1px solid var(--brown-pale);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--brown-dark);
+    font-family: 'Noto Serif SC', serif;
+  }
+  .stat-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  .encounter-card {
+    background: white;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 6px rgba(44,26,14,0.05);
+    border: 1px solid rgba(232,213,188,0.6);
+  }
+  .enc-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--brown-pale);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .enc-info { flex: 1; }
+  .enc-name { font-size: 14px; color: var(--brown-dark); font-weight: 500; }
+  .enc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .enc-count {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: var(--tag-bg);
+    color: var(--brown-mid);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .enc-count.highlight {
+    background: #FFF3E0;
+    color: #E67E22;
+  }
+
+  /* 提示通知 */
+  .encounter-notice {
+    background: linear-gradient(135deg, #FFF8F0, #FFF3E0);
+    border: 1.5px solid #F0C080;
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .notice-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .notice-text { font-size: 12px; color: var(--brown-mid); line-height: 1.6; }
+
+  /* ── 流程说明 ── */
+  .flow-section {
+    width: 100%;
+    max-width: 700px;
+    margin-top: 36px;
+  }
+  .flow-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 16px;
+    color: var(--brown-dark);
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .flow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--warm-white);
+    border-radius: 0;
+    position: relative;
+  }
+  .flow-step:first-child { border-radius: 16px 16px 0 0; }
+  .flow-step:last-child { border-radius: 0 0 16px 16px; }
+  .flow-step + .flow-step { border-top: 1px solid var(--brown-pale); }
+  .flow-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--brown-dark);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .flow-content h4 {
+    font-size: 14px;
+    color: var(--brown-dark);
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .flow-content p {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .flow-arrow {
+    text-align: center;
+    color: var(--brown-pale);
+    font-size: 18px;
+    margin: -2px 0;
+    z-index: 1;
+    position: relative;
+  }
+
+  /* 日历颜色块模拟 */
+  .cal-photo-1 { background: linear-gradient(135deg, #D4A97A, #A07050); }
+  .cal-photo-2 { background: linear-gradient(135deg, #8BA888, #5C8060); }
+  .cal-photo-3 { background: linear-gradient(135deg, #C4906A, #8A6040); }
+  .cal-photo-4 { background: linear-gradient(135deg, #A8B8C8, #7090A8); }
+  .cal-photo-5 { background: linear-gradient(135deg, #D4B890, #A08060); }
+
+  @media (max-width: 400px) {
+    .phone { width: 290px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <h1>同 桌</h1>
+  <p>交互原型图 · 点击标签切换页面</p>
+</div>
+
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="showPage('home')">🏠 首页·约咖列表</div>
+  <div class="nav-tab" onclick="showPage('publish')">✏️ 发布约咖</div>
+  <div class="nav-tab" onclick="showPage('calendar')">📅 打卡日历</div>
+  <div class="nav-tab" onclick="showPage('profile')">👤 我的·搭子</div>
+</div>
+
+<div class="phone-wrap">
+
+  <!-- ── 首页 ── -->
+  <div class="phone-card active" id="page-home">
+    <div class="phone-label">首页 · 约咖列表</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-dot"></div></div>
+      <div class="phone-screen" style="position:relative;">
+        <div class="status-bar"><span>9:41</span><span>☕ 同桌</span><span>🔋</span></div>
+        <div class="page-header">
+          <div class="page-title">同桌</div>
+          <div class="page-subtitle">找到今天一起工作的人</div>
+        </div>
+        <!-- 日期筛选 -->
+        <div style="display:flex;gap:6px;padding:10px 14px 0;overflow-x:auto;">
+          <div style="padding:5px 12px;border-radius:12px;background:var(--brown-dark);color:white;font-size:11px;white-space:nowrap;">今天</div>
+          <div style="padding:5px 12px;border-radius:12px;background:white;border:1px solid var(--brown-pale);color:var(--text-muted);font-size:11px;white-space:nowrap;">明天</div>
+          <div style="padding:5px 12px;border-radius:12px;background:white;border:1px solid var(--brown-pale);color:var(--text-muted);font-size:11px;white-space:nowrap;">周六</div>
+          <div style="padding:5px 12px;border-radius:12px;background:white;border:1px solid var(--brown-pale);color:var(--text-muted);font-size:11px;white-space:nowrap;">周日</div>
+        </div>
+        <div class="scroll-area" style="padding-top:10px;">
+          <!-- 卡片1 -->
+          <div class="meetup-card">
+            <div class="meetup-card-top">
+              <div>
+                <div class="meetup-date">今天下午 · 三里屯</div>
+                <div class="meetup-cafe">Seesaw Coffee</div>
+              </div>
+              <div class="meetup-badge">还差1人</div>
+            </div>
+            <div class="meetup-tags">
+              <span class="tag">🎧 安静打工</span>
+              <span class="tag">⏰ 14:00–17:00</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">「在做设计稿，不聊天也没关系，并排坐着就好」</div>
+            <div class="meetup-footer">
+              <div class="meetup-host"><div class="avatar-tiny">🌿</div> 小橘</div>
+              <button class="join-btn">我也要去</button>
+            </div>
+          </div>
+
+          <!-- 卡片2 -->
+          <div class="meetup-card">
+            <div class="meetup-card-top">
+              <div>
+                <div class="meetup-date">今天上午 · 朝阳公园附近</div>
+                <div class="meetup-cafe">% Arabica</div>
+              </div>
+              <div class="meetup-badge full">已满员</div>
+            </div>
+            <div class="meetup-tags">
+              <span class="tag">🤝 边聊边工作</span>
+              <span class="tag">⏰ 10:00–12:30</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">「自由职业er，最近在做品牌项目，可以互相看看彼此的东西」</div>
+            <div class="meetup-footer">
+              <div class="meetup-host"><div class="avatar-tiny">🌙</div> 阿寒</div>
+              <button class="join-btn joined">已满员</button>
+            </div>
+          </div>
+
+          <!-- 卡片3 -->
+          <div class="meetup-card">
+            <div class="meetup-card-top">
+              <div>
+                <div class="meetup-date">今天傍晚 · 五道口</div>
+                <div class="meetup-cafe">鱼眼咖啡</div>
+              </div>
+              <div class="meetup-badge">还差2人</div>
+            </div>
+            <div class="meetup-tags">
+              <span class="tag">🧶 手工活动</span>
+              <span class="tag">⏰ 18:00–20:00</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">「边钩针边聊，不需要会，现场教，最多3人」</div>
+            <div class="meetup-footer">
+              <div class="meetup-host"><div class="avatar-tiny">🌸</div> 桃子</div>
+              <button class="join-btn">我也要去</button>
+            </div>
+          </div>
+        </div>
+        <!-- FAB -->
+        <div class="fab" onclick="showPage('publish')">＋</div>
+        <!-- 底部导航 -->
+        <div class="bottom-nav">
+          <div class="nav-item active"><div class="nav-icon">☕</div><div class="nav-text">约咖</div></div>
+          <div class="nav-item" onclick="showPage('calendar')"><div class="nav-icon">📅</div><div class="nav-text">日历</div></div>
+          <div class="nav-item" onclick="showPage('profile')"><div class="nav-icon">👤</div><div class="nav-text">我的</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 发布约咖 ── -->
+  <div class="phone-card" id="page-publish">
+    <div class="phone-label">发布约咖</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-dot"></div></div>
+      <div class="phone-screen" style="position:relative;">
+        <div class="status-bar"><span>9:41</span><span></span><span>🔋</span></div>
+        <div class="page-header" style="display:flex;align-items:center;gap:10px;">
+          <span style="color:var(--text-muted);cursor:pointer;" onclick="showPage('home')">←</span>
+          <div>
+            <div class="page-title">发布约咖</div>
+          </div>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:14px 0 80px;display:flex;flex-direction:column;gap:14px;">
+
+          <!-- 日期 -->
+          <div class="publish-section">
+            <div class="publish-label">📅 什么时候</div>
+            <div style="background:white;border-radius:12px;padding:10px 14px;border:1.5px solid var(--brown-dark);font-size:13px;color:var(--brown-dark);display:flex;justify-content:space-between;">
+              <span>明天 · 3月7日 周六</span><span style="color:var(--text-muted);">▾</span>
+            </div>
+            <div class="time-options" style="margin-top:8px;">
+              <div class="time-opt">☀️ 上午</div>
+              <div class="time-opt selected">🌤 下午</div>
+              <div class="time-opt">🌆 傍晚</div>
+            </div>
+          </div>
+
+          <!-- 咖啡馆 -->
+          <div class="publish-section">
+            <div class="publish-label">☕ 去哪家咖啡馆</div>
+            <div class="cafe-search-box">
+              <span>📍</span>
+              <span>搜索附近咖啡馆…</span>
+            </div>
+            <div class="cafe-result selected-cafe">
+              <div class="cafe-result-name">Seesaw Coffee · 三里屯店</div>
+              <div class="cafe-result-meta">📍 距你 320m · ⭐ 4.8 · 插座多</div>
+            </div>
+            <div class="cafe-result">
+              <div class="cafe-result-name">% Arabica · 朝阳门店</div>
+              <div class="cafe-result-meta">📍 距你 680m · ⭐ 4.7</div>
+            </div>
+          </div>
+
+          <!-- 活动类型 -->
+          <div class="publish-section">
+            <div class="publish-label">🎯 一起做什么</div>
+            <div class="activity-opts">
+              <div class="activity-opt selected">🎧 安静打工<br><span style="font-size:9px;opacity:0.7;">各做各的，并排坐</span></div>
+              <div class="activity-opt">💬 边聊边工作<br><span style="font-size:9px;opacity:0.7;">可以聊聊各自的事</span></div>
+              <div class="activity-opt">🧶 手工活动<br><span style="font-size:9px;opacity:0.7;">钩针、拼豆等</span></div>
+              <div class="activity-opt">✨ 其他<br><span style="font-size:9px;opacity:0.7;">自己说</span></div>
+            </div>
+          </div>
+
+          <!-- 人数 -->
+          <div class="publish-section">
+            <div class="publish-label">👥 最多几个人（含你）</div>
+            <div class="people-opts">
+              <div class="people-opt">
+                <div class="people-num">2</div>
+                <div class="people-label">就我们俩</div>
+              </div>
+              <div class="people-opt selected">
+                <div class="people-num">3</div>
+                <div class="people-label">小圈子</div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:6px;text-align:center;">最多3人，不做大型聚会</div>
+          </div>
+
+          <!-- 介绍 -->
+          <div class="publish-section">
+            <div class="publish-label">🌿 说一句话（可选）</div>
+            <div style="background:white;border-radius:12px;padding:10px 14px;border:1.5px solid var(--brown-pale);font-size:12px;color:var(--text-muted);min-height:52px;">在做插画项目，不太说话的那种，带了一只小熊...</div>
+          </div>
+
+        </div>
+        <button class="publish-btn">发布约咖</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 打卡日历 ── -->
+  <div class="phone-card" id="page-calendar">
+    <div class="phone-label">打卡日历</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-dot"></div></div>
+      <div class="phone-screen">
+        <div class="status-bar"><span>9:41</span><span></span><span>🔋</span></div>
+        <div class="page-header">
+          <div class="page-title">咖啡日历</div>
+          <div class="page-subtitle">你的每一杯</div>
+        </div>
+        <div class="calendar-header">
+          <span class="cal-nav">‹</span>
+          <span class="cal-month">2026年 3月</span>
+          <span class="cal-nav">›</span>
+        </div>
+        <div class="cal-weekdays">
+          <div class="cal-wd">日</div><div class="cal-wd">一</div><div class="cal-wd">二</div>
+          <div class="cal-wd">三</div><div class="cal-wd">四</div><div class="cal-wd">五</div><div class="cal-wd">六</div>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-day empty"></div>
+          <div class="cal-day empty"></div>
+          <div class="cal-day empty"></div>
+          <div class="cal-day empty"></div>
+          <div class="cal-day empty"></div>
+          <div class="cal-day empty"></div>
+          <div class="cal-day">1</div>
+          <div class="cal-day">2</div>
+          <div class="cal-day has-photo cal-photo-1"><div class="day-num-overlay">3</div></div>
+          <div class="cal-day">4</div>
+          <div class="cal-day has-photo cal-photo-2"><div class="day-num-overlay">5</div></div>
+          <div class="cal-day today">6</div>
+          <div class="cal-day">7</div>
+          <div class="cal-day">8</div>
+          <div class="cal-day has-photo cal-photo-3" onclick="showDetail()"><div class="day-num-overlay">9</div></div>
+          <div class="cal-day">10</div>
+          <div class="cal-day has-photo cal-photo-4"><div class="day-num-overlay">11</div></div>
+          <div class="cal-day">12</div>
+          <div class="cal-day">13</div>
+          <div class="cal-day">14</div>
+          <div class="cal-day has-photo cal-photo-5"><div class="day-num-overlay">15</div></div>
+          <div class="cal-day">16</div><div class="cal-day">17</div><div class="cal-day">18</div>
+          <div class="cal-day">19</div><div class="cal-day">20</div><div class="cal-day">21</div>
+          <div class="cal-day">22</div><div class="cal-day">23</div><div class="cal-day">24</div>
+          <div class="cal-day">25</div><div class="cal-day">26</div><div class="cal-day">27</div>
+          <div class="cal-day">28</div><div class="cal-day">29</div><div class="cal-day">30</div>
+          <div class="cal-day">31</div>
+        </div>
+
+        <!-- 点击展开的打卡详情 -->
+        <div id="checkin-detail-box" style="display:none;padding:0 0 14px;">
+          <div style="text-align:center;font-size:11px;color:var(--text-muted);padding:6px 0;">▲ 3月9日 周一</div>
+          <div class="checkin-detail">
+            <div class="checkin-photo">☕</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Seesaw Coffee · 三里屯</div>
+            <div class="mood-beans">
+              <span class="bean">☕</span><span class="bean">☕</span><span class="bean">☕</span><span class="bean">☕</span><span style="font-size:14px;opacity:0.3;">☕</span>
+            </div>
+            <div class="checkin-note">「今天的拿铁拉花特别好看，窗边的位子阳光刚刚好，安安静静写了三个小时，感觉久违的专注」</div>
+          </div>
+        </div>
+
+        <!-- 打卡按钮 -->
+        <div style="padding:0 14px 14px;margin-top:auto;">
+          <button style="width:100%;padding:12px;border-radius:14px;background:var(--brown-dark);color:white;border:none;font-size:14px;font-weight:500;font-family:'Noto Sans SC',sans-serif;letter-spacing:1px;cursor:pointer;">
+            📷 今天打卡
+          </button>
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="showPage('home')"><div class="nav-icon">☕</div><div class="nav-text">约咖</div></div>
+          <div class="nav-item active"><div class="nav-icon">📅</div><div class="nav-text">日历</div></div>
+          <div class="nav-item" onclick="showPage('profile')"><div class="nav-icon">👤</div><div class="nav-text">我的</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 个人页 ── -->
+  <div class="phone-card" id="page-profile">
+    <div class="phone-label">我的 · 搭子记录</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-dot"></div></div>
+      <div class="phone-screen">
+        <div class="status-bar" style="background:var(--brown-dark);color:rgba(255,255,255,0.6);"><span>9:41</span><span></span><span>🔋</span></div>
+        <div class="profile-hero">
+          <div class="profile-avatar">🌿</div>
+          <div class="profile-name">小橘</div>
+          <div class="profile-bio">插画师 · 在做一个关于植物的项目</div>
+        </div>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <div class="stat-num">12</div>
+            <div class="stat-label">次打卡</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">5</div>
+            <div class="stat-label">次约咖</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">3</div>
+            <div class="stat-label">位同桌</div>
+          </div>
+        </div>
+        <div class="scroll-area">
+          <!-- 多次相遇提示 -->
+          <div class="encounter-notice">
+            <div class="notice-icon">☕</div>
+            <div class="notice-text">你和<strong>阿寒</strong>已经见面 3 次了，你们是彼此的常驻同桌了</div>
+          </div>
+
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-bottom:2px;letter-spacing:0.5px;">同桌记录</div>
+
+          <div class="encounter-card">
+            <div class="enc-avatar">🌙</div>
+            <div class="enc-info">
+              <div class="enc-name">阿寒</div>
+              <div class="enc-meta">品牌设计师 · 最近在朝阳</div>
+            </div>
+            <div class="enc-count highlight">☕×3</div>
+          </div>
+
+          <div class="encounter-card">
+            <div class="enc-avatar">🌸</div>
+            <div class="enc-info">
+              <div class="enc-name">桃子</div>
+              <div class="enc-meta">自由撰稿 · 五道口附近</div>
+            </div>
+            <div class="enc-count">☕×2</div>
+          </div>
+
+          <div class="encounter-card">
+            <div class="enc-avatar">🦋</div>
+            <div class="enc-info">
+              <div class="enc-name">苇苇</div>
+              <div class="enc-meta">UX 设计 · 上周初次见面</div>
+            </div>
+            <div class="enc-count">☕×1</div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item" onclick="showPage('home')"><div class="nav-icon">☕</div><div class="nav-text">约咖</div></div>
+          <div class="nav-item" onclick="showPage('calendar')"><div class="nav-icon">📅</div><div class="nav-text">日历</div></div>
+          <div class="nav-item active"><div class="nav-icon">👤</div><div class="nav-text">我的</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 交互流程说明 ── -->
+<div class="flow-section">
+  <div class="flow-title">核心交互流程</div>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-content">
+        <h4>发布约咖</h4>
+        <p>选日期时段 → 定位搜索附近咖啡馆 → 选活动类型 → 设人数上限（2或3，不可更多）→ 写一句话介绍 → 发布</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-content">
+        <h4>浏览 & 报名</h4>
+        <p>首页按日期筛选 → 查看活动卡片 → 点「我也要去」报名 → 满员自动关闭 → 站内确认赴约</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-content">
+        <h4>咖啡打卡</h4>
+        <p>打卡页面拍照上传 → 填心情评分（☕颗数）和小确幸 → 照片出现在当天日历格里 → 点击可查看详情</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-content">
+        <h4>悄悄累计相遇</h4>
+        <p>每次赴约后系统记录一次相遇 → 与同一人见满3次 → 双方各收到一条私密提示「你们已经见面3次了 ☕」→ 只提示一次，不再打扰</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(name) {
+  document.querySelectorAll('.phone-card').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const tabs = { home: 0, publish: 1, calendar: 2, profile: 3 };
+  document.querySelectorAll('.nav-tab')[tabs[name]].classList.add('active');
+}
+
+function showDetail() {
+  const box = document.getElementById('checkin-detail-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
