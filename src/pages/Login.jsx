@@ -1,7 +1,6 @@
 import { useState } from 'react'
-
-// 阿里云函数计算 API 地址（需要在环境变量中配置）
-const FC_API_URL = import.meta.env.VITE_FC_API_URL || ''
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
+import { auth } from '../lib/firebase'
 
 export default function Login({ onLoginSuccess }) {
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -9,7 +8,7 @@ export default function Login({ onLoginSuccess }) {
   const [step, setStep] = useState('phone') // 'phone' | 'code'
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [countdown, setCountdown] = useState(0)
+  const [confirmationResult, setConfirmationResult] = useState(null)
 
   // 发送验证码
   const handleSendCode = async (e) => {
@@ -17,7 +16,7 @@ export default function Login({ onLoginSuccess }) {
     setError('')
     setLoading(true)
 
-    // 验证手机号格式
+    // 简单验证手机号格式
     const phoneRegex = /^1[3-9]\d{9}$/
     if (!phoneRegex.test(phoneNumber)) {
       setError('请输入正确的手机号')
@@ -26,54 +25,74 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      if (!FC_API_URL) {
-        throw new Error('API 地址未配置，请联系管理员')
+      // 清除旧的 reCAPTCHA 实例（如果存在）
+      if (window.recaptchaVerifier) {
+        try {
+          await window.recaptchaVerifier.clear()
+        } catch (e) {
+          console.log('清除旧 reCAPTCHA 失败:', e)
+        }
+        window.recaptchaVerifier = null
       }
 
-      console.log('发送验证码到:', phoneNumber)
-
-      const response = await fetch(FC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+      // 初始化 reCAPTCHA（Firebase Phone Auth 必需）
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: (response) => {
+          console.log('reCAPTCHA solved:', response)
         },
-        body: JSON.stringify({
-          action: 'send',
-          phone: phoneNumber
-        })
+        'expired-callback': () => {
+          setError('验证过期，请重试')
+        }
       })
 
-      const result = await response.json()
+      // 渲染 reCAPTCHA
+      await window.recaptchaVerifier.render()
+      console.log('reCAPTCHA 已渲染')
 
-      if (!response.ok) {
-        throw new Error(result.error || result.message || '发送失败')
-      }
+      // 发送验证码
+      const fullPhoneNumber = `+86${phoneNumber}`
+      console.log('发送验证码到:', fullPhoneNumber)
 
-      console.log('验证码发送成功:', result)
+      const result = await signInWithPhoneNumber(
+        auth,
+        fullPhoneNumber,
+        window.recaptchaVerifier
+      )
+
+      console.log('验证码发送成功')
+      setConfirmationResult(result)
       setStep('code')
-
-      // 开始倒计时
-      startCountdown()
     } catch (err) {
       console.error('发送验证码失败:', err)
-      setError(err.message || '发送失败，请稍后重试')
+
+      // 显示错误信息
+      let errorMsg = ''
+
+      switch (err.code) {
+        case 'auth/too-many-requests':
+          errorMsg = '发送太频繁，请稍后再试'
+          break
+        case 'auth/invalid-phone-number':
+          errorMsg = '手机号格式不正确'
+          break
+        case 'auth/quota-exceeded':
+          errorMsg = '发送次数超限，请稍后再试'
+          break
+        case 'auth/captcha-check-failed':
+          errorMsg = '人机验证失败，请重试'
+          break
+        case 'auth/unauthorized-domain':
+          errorMsg = '当前域名未授权'
+          break
+        default:
+          errorMsg = '发送失败，请稍后重试'
+      }
+
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
-  }
-
-  // 倒计时
-  const startCountdown = () => {
-    setCountdown(60)
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
   }
 
   // 验证码登录
@@ -89,46 +108,19 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      if (!FC_API_URL) {
-        throw new Error('API 地址未配置')
-      }
-
-      console.log('验证验证码:', code)
-
-      const response = await fetch(FC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'verify',
-          phone: phoneNumber,
-          code: code
-        })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || result.message || '验证失败')
-      }
-
-      if (!result.success) {
-        throw new Error('验证失败，请重试')
-      }
-
+      const result = await confirmationResult.confirm(code)
       console.log('登录成功:', result)
-
-      // 保存 token 到 localStorage
-      if (result.token) {
-        localStorage.setItem('tongzhuo_token', result.token)
-        localStorage.setItem('tongzhuo_phone', result.phone)
-      }
-
       onLoginSuccess()
     } catch (err) {
       console.error('验证失败:', err)
-      setError(err.message || '验证失败，请重试')
+
+      if (err.code === 'auth/invalid-verification-code') {
+        setError('验证码错误')
+      } else if (err.code === 'auth/code-expired') {
+        setError('验证码已过期，请重新获取')
+      } else {
+        setError('验证失败，请重试')
+      }
     } finally {
       setLoading(false)
     }
@@ -212,30 +204,12 @@ export default function Login({ onLoginSuccess }) {
                 {loading ? '验证中...' : '登录'}
               </button>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={handleBackToPhone}
-                  className="flex-1 py-3 rounded-xl bg-white text-[#9A7A5C] text-sm border border-[#E8D5BC] transition-colors"
-                >
-                  返回
-                </button>
-                {countdown > 0 ? (
-                  <button
-                    disabled
-                    className="flex-1 py-3 rounded-xl bg-[#F7F2EB] text-[#9A7A5C] text-sm border border-[#E8D5BC]"
-                  >
-                    {countdown}秒后重试
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSendCode}
-                    disabled={loading}
-                    className="flex-1 py-3 rounded-xl bg-white text-[#2C1A0E] text-sm border border-[#E8D5BC] transition-colors"
-                  >
-                    重新发送
-                  </button>
-                )}
-              </div>
+              <button
+                onClick={handleBackToPhone}
+                className="w-full py-3 rounded-xl bg-white text-[#9A7A5C] text-sm border border-[#E8D5BC] transition-colors"
+              >
+                返回修改手机号
+              </button>
             </>
           )}
         </div>
@@ -246,6 +220,9 @@ export default function Login({ onLoginSuccess }) {
           我们不会发送推销短信
         </p>
       </div>
+
+      {/* reCAPTCHA 容器（隐藏） */}
+      <div id="recaptcha-container" className="hidden"></div>
     </div>
   )
 }
