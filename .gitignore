@@ -25,3 +25,14 @@ dist-ssr
 
 # Environment variables
 .env
+
+.vercel
+
+# Temporary files
+*.sh
+*.ps1
+*.py
+ossutil64.exe
+
+# Claude memory
+.claude/

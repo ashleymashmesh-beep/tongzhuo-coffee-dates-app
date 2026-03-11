@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, query, where, onSnapshot, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { signOut } from 'firebase/auth'
-import { auth, db } from '../lib/firebase'
+import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserEncounters } from '../lib/encounters'
 import { getPendingReviews, submitReview, getPunctualityRate } from '../lib/reviews'
@@ -106,12 +105,8 @@ export default function Profile() {
   // 退出登录
   const handleLogout = async () => {
     if (confirm('确认退出登录？')) {
-      try {
-        await signOut(auth)
-        navigate('/login')
-      } catch (err) {
-        console.error('退出登录失败:', err)
-      }
+      logout()
+      navigate('/login')
     }
   }
 

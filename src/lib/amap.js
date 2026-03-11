@@ -24,8 +24,13 @@ export async function initAmap() {
     // 动态加载高德地图 JS SDK
     const script = document.createElement('script')
     script.type = 'text/javascript'
-    // TODO: 将 API Key 移到环境变量 VITE_AMAP_KEY
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=34ac8dcdba4d153fae408b09f82de68f&plugin=AMap.Geolocation,AMap.PlaceSearch`
+    const amapKey = import.meta.env.VITE_AMAP_KEY || ""
+    if (!amapKey) {
+      console.error('❌ 高德地图 API Key 缺失：请在 .env 文件中设置 VITE_AMAP_KEY')
+      reject(new Error('高德地图 API Key 未配置'))
+      return
+    }
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}&plugin=AMap.Geolocation,AMap.PlaceSearch`
 
     script.onload = () => {
       AMap = window.AMap

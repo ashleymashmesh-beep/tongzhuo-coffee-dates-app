@@ -1,0 +1,11 @@
+{
+  "name": "tongzhuo-sms-fc",
+  "version": "1.0.0",
+  "description": "同桌短信验证码服务 - 阿里云函数计算",
+  "main": "index.js",
+  "dependencies": {
+    "@alicloud/dysmsapi20170525": "^3.0.0",
+    "@alicloud/openapi-client": "^0.4.6"
+  },
+  "license": "MIT"
+}

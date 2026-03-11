@@ -1,0 +1,37 @@
+# 阿里云函数计算配置模板
+# 使用阿里云 CLI 或控制台部署时使用此配置
+
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Resources:
+  tongzhuo-service:
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Description: '同桌应用后端服务'
+    Functions:
+      send-sms:
+        Type: 'Aliyun::Serverless::Function'
+        Properties:
+          Description: '发送短信验证码接口'
+          Handler: index.handler
+          Runtime: nodejs18
+          CodeUri: ./
+          MemorySize: 256
+          Timeout: 30
+          EnvironmentVariables:
+            ACCESS_KEY_ID: '{{ accessKeyId }}'
+            ACCESS_KEY_SECRET: '{{ accessKeySecret }}'
+            SIGN_NAME: '{{ signName }}'
+            TEMPLATE_CODE: '{{ templateCode }}'
+            # Redis 配置（可选，用于多实例场景）
+            # REDIS_HOST: '{{ redisHost }}'
+            # REDIS_PORT: '6379'
+            # REDIS_PASSWORD: '{{ redisPassword }}'
+          Events:
+            http-trigger:
+              Type: HTTP
+              Properties:
+                AuthType: ANONYMOUS
+                Methods:
+                  - POST
+                Path: /sms
