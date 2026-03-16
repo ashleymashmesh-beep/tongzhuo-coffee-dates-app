@@ -162,20 +162,24 @@ export default function Publish() {
       return
     }
 
+    // 确定要使用的咖啡馆
+    let cafeToUse = selectedCafe
+
     // 检查是否已选择咖啡馆
-    if (isManualInput && !selectedCafe) {
+    if (isManualInput && !cafeToUse) {
       if (!manualCafeName.trim() || !manualCafeAddress.trim()) {
         alert('请填写咖啡馆名称和地址')
         return
       }
-      selectedCafe = {
+      cafeToUse = {
         id: 'manual-' + Date.now(),
         name: manualCafeName.trim(),
         address: manualCafeAddress.trim()
       }
+      setSelectedCafe(cafeToUse)
     }
 
-    if (!selectedCafe) {
+    if (!cafeToUse) {
       alert('请选择咖啡馆')
       return
     }
@@ -190,9 +194,9 @@ export default function Publish() {
 
       await addDoc(collection(db, 'meetups'), {
         creatorId: user.uid,
-        cafeName: selectedCafe.name,
-        cafeAddress: selectedCafe.address,
-        cafeId: selectedCafe.id,
+        cafeName: cafeToUse.name,
+        cafeAddress: cafeToUse.address,
+        cafeId: cafeToUse.id,
         date: selectedDate,
         timeSlot: selectedTimeSlot,
         specificTime: selectedSpecificTime,

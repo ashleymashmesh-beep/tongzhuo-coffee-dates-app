@@ -1,0 +1,15 @@
+{
+  "name": "tongzhuo-workers",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers for 同桌 app",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
