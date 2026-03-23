@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore'
-import { storage, db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { checkinsApi } from '../lib/api'
 
 export default function Calendar() {
   const { user } = useAuth()
@@ -15,6 +13,7 @@ export default function Calendar() {
   // 打卡表单状态
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoUrl, setPhotoUrl] = useState('')
   const [moodScore, setMoodScore] = useState(3)
   const [cafeName, setCafeName] = useState('')
   const [note, setNote] = useState('')
@@ -41,28 +40,21 @@ export default function Calendar() {
   useEffect(() => {
     if (!user) return
 
-    const { year, month } = getCalendarData()
-    const startDate = new Date(year, month, 1)
-    const endDate = new Date(year, month + 1, 0, 23, 59, 59)
+    const fetchCheckins = async () => {
+      try {
+        const { year, month } = getCalendarData()
+        const result = await checkinsApi.list({
+          user_id: user.id,
+          year: year.toString(),
+          month: (month + 1).toString()
+        })
+        setCheckins(result.data || [])
+      } catch (err) {
+        console.error('获取打卡数据失败:', err)
+      }
+    }
 
-    const q = query(
-      collection(db, 'checkins'),
-      where('userId', '==', user.uid),
-      where('date', '>=', formatDateKey(year, month, 1)),
-      where('date', '<=', formatDateKey(year, month, endDate.getDate()))
-    )
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const checkinsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setCheckins(checkinsData)
-    }, (err) => {
-      console.error('获取打卡数据失败:', err)
-    })
-
-    return unsubscribe
+    fetchCheckins()
   }, [user, currentDate])
 
   // 获取某日期的打卡记录
@@ -79,7 +71,7 @@ export default function Calendar() {
     setCurrentDate(newDate)
   }
 
-  // 选择照片
+  // 选择照片并转换为base64
   const handlePhotoSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -98,11 +90,18 @@ export default function Calendar() {
 
     setPhoto(file)
     setPhotoPreview(URL.createObjectURL(file))
+
+    // 转换为base64
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPhotoUrl(reader.result)
+    }
+    reader.readAsDataURL(file)
   }
 
   // 上传并保存打卡
   const handleSaveCheckin = async () => {
-    if (!photo) {
+    if (!photoUrl) {
       alert('请选择照片')
       return
     }
@@ -114,50 +113,39 @@ export default function Calendar() {
       const today = new Date()
       const dateKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate())
 
-      // 上传照片到 Firebase Storage
-      const fileName = `${user.uid}_${dateKey}_${Date.now()}.jpg`
-      const storageRef = ref(storage, `checkins/${user.uid}/${fileName}`)
-      await uploadBytes(storageRef, photo)
-      const photoUrl = await getDownloadURL(storageRef)
-
-      // 保存打卡记录到 Firestore
-      const docRef = await addDoc(collection(db, 'checkins'), {
-        userId: user.uid,
-        photoUrl,
-        cafeName: cafeName.trim() || null,
-        moodScore,
+      // 保存打卡记录
+      const result = await checkinsApi.create({
+        user_id: user.id,
+        photo_url: photoUrl,
+        cafe_name: cafeName.trim() || null,
+        mood_score: moodScore,
         note: note.trim() || null,
-        date: dateKey,
-        createdAt: serverTimestamp()
+        date: dateKey
       })
 
       // 立即更新本地状态，让照片立刻显示
       const newCheckin = {
-        id: docRef.id,
-        userId: user.uid,
-        photoUrl,
-        cafeName: cafeName.trim() || null,
-        moodScore,
+        id: result.data.id,
+        user_id: user.id,
+        photo_url: photoUrl,
+        cafe_name: cafeName.trim() || null,
+        mood_score: moodScore,
         note: note.trim() || null,
         date: dateKey,
-        createdAt: new Date().toISOString()
+        created_at: new Date().toISOString()
       }
       setCheckins(prev => [...prev, newCheckin])
 
       // 重置表单并关闭弹窗
       setPhoto(null)
       setPhotoPreview(null)
+      setPhotoUrl('')
       setMoodScore(3)
       setCafeName('')
       setNote('')
       setShowCheckinModal(false)
     } catch (err) {
-      console.error('=== 打卡失败详细信息 ===')
-      console.error('错误对象:', err)
-      console.error('错误代码:', err.code)
-      console.error('错误消息:', err.message)
-      console.error('错误名称:', err.name)
-      console.error('错误堆栈:', err.stack)
+      console.error('打卡失败:', err)
       alert(`打卡失败: ${err.message || '未知错误'}`)
     } finally {
       setUploading(false)
@@ -254,7 +242,7 @@ export default function Calendar() {
                 // 有打卡：显示照片
                 <div className="w-full h-full relative">
                   <img
-                    src={checkin.photoUrl}
+                    src={checkin.photo_url}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -317,6 +305,7 @@ export default function Calendar() {
                       onClick={() => {
                         setPhoto(null)
                         setPhotoPreview(null)
+                        setPhotoUrl('')
                       }}
                       className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center"
                     >
@@ -405,7 +394,7 @@ export default function Calendar() {
             {/* 照片 */}
             <div className="relative">
               <img
-                src={selectedCheckin.photoUrl}
+                src={selectedCheckin.photo_url}
                 alt=""
                 className="w-full h-64 object-cover"
               />
@@ -420,18 +409,18 @@ export default function Calendar() {
 
               {/* 心情评分 */}
               <div className="flex justify-center gap-1 mb-4">
-                {Array.from({ length: selectedCheckin.moodScore || 3 }).map((_, i) => (
+                {Array.from({ length: selectedCheckin.mood_score || 3 }).map((_, i) => (
                   <span key={i} className="text-lg">☕</span>
                 ))}
-                {Array.from({ length: 5 - (selectedCheckin.moodScore || 3) }).map((_, i) => (
+                {Array.from({ length: 5 - (selectedCheckin.mood_score || 3) }).map((_, i) => (
                   <span key={i} className="text-lg opacity-30">☕</span>
                 ))}
               </div>
 
               {/* 咖啡馆 */}
-              {selectedCheckin.cafeName && (
+              {selectedCheckin.cafe_name && (
                 <div className="text-center text-sm text-[#2C1A0E] mb-4">
-                  📍 {selectedCheckin.cafeName}
+                  📍 {selectedCheckin.cafe_name}
                 </div>
               )}
 

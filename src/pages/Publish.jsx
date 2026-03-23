@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { eventsApi } from '../lib/api'
 import { initAmap, getCurrentLocation, searchNearbyCafes, formatDistance } from '../lib/amap'
 
 // 活动类型配置
@@ -192,20 +191,17 @@ export default function Publish() {
         throw new Error('人数上限只能是 2 或 3')
       }
 
-      await addDoc(collection(db, 'meetups'), {
-        creatorId: user.uid,
-        cafeName: cafeToUse.name,
-        cafeAddress: cafeToUse.address,
-        cafeId: cafeToUse.id,
+      await eventsApi.create({
+        creator_id: user.id,
+        cafe_name: cafeToUse.name,
+        cafe_address: cafeToUse.address,
+        cafe_id: cafeToUse.id,
         date: selectedDate,
-        timeSlot: selectedTimeSlot,
-        specificTime: selectedSpecificTime,
-        activityType: selectedActivity,
+        time_slot: selectedTimeSlot,
+        specific_time: selectedSpecificTime,
+        activity_type: selectedActivity,
         intro: intro.trim(),
-        maxPeople: maxPeople,
-        attendees: [user.uid], // 创建者自动加入
-        status: 'open',
-        createdAt: serverTimestamp()
+        max_people: maxPeople
       })
 
       navigate('/')

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, arrayUnion, getDocs } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { createEncounters, checkEncounterNotifications } from '../lib/encounters'
 import { createReviewTasks } from '../lib/reviews'
+import { eventsApi, signupsApi } from '../lib/api'
 
 // 时段配置
 const TIME_SLOT_CONFIG = {
@@ -58,62 +57,87 @@ export default function Home() {
       dateLabel = date.toLocaleDateString('zh-CN', { weekday: 'short', month: 'short', day: 'numeric' })
     }
 
-    const slot = TIME_SLOT_CONFIG[meetup.timeSlot]
-    const specificTime = meetup.specificTime || ''
+    const slot = TIME_SLOT_CONFIG[meetup.time_slot]
+    const specificTime = meetup.specific_time || ''
 
     return specificTime
       ? `${dateLabel} ${specificTime}`
       : `${dateLabel}${slot?.label || ''}`
   }
 
-  // 检查相遇通知
-  const checkNotifications = async () => {
-    if (!user) return
-
-    try {
-      const notifs = await checkEncounterNotifications(user.uid)
-      if (notifs.length > 0) {
-        setNotifications(notifs)
-      }
-    } catch (err) {
-      console.error('检查相遇通知失败:', err)
-    }
-  }
-
   // 获取约咖列表
   useEffect(() => {
-    setLoading(true)
+    const fetchEvents = async () => {
+      setLoading(true)
+      try {
+        // 计算日期范围（未来 7 天）
+        const today = new Date()
+        const endDate = new Date(today)
+        endDate.setDate(endDate.getDate() + 7)
 
-    // 计算日期范围（未来 7 天）
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const endDate = new Date(today)
-    endDate.setDate(endDate.getDate() + 7)
+        const result = await eventsApi.list({
+          status: 'open',
+          date_from: today.toISOString().split('T')[0]
+        })
 
-    const q = query(
-      collection(db, 'meetups'),
-      where('date', '>=', today.toISOString().split('T')[0]),
-      where('date', '<=', endDate.toISOString().split('T')[0]),
-      orderBy('date', 'asc')
-    )
+        // 转换数据格式，匹配前端期望的字段名
+        const events = (result.data || []).map(event => ({
+          id: event.id,
+          creatorId: event.creator_id,
+          cafeName: event.cafe_name,
+          cafeAddress: event.cafe_address,
+          cafeId: event.cafe_id,
+          date: event.date,
+          timeSlot: event.time_slot,
+          specificTime: event.specific_time,
+          activityType: event.activity_type,
+          intro: event.intro,
+          maxPeople: event.max_people,
+          status: event.status,
+          createdAt: event.created_at,
+          // 报名信息需要单独获取
+          attendees: [],
+          signupCount: event.signup_count || 0
+        }))
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const meetupsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setMeetups(meetupsData)
-      setLoading(false)
-    }, (err) => {
-      console.error('获取约咖列表失败:', err)
-      setLoading(false)
-    })
+        // 获取每个活动的报名列表
+        for (const event of events) {
+          try {
+            const signupsResult = await eventsApi.getSignups(event.id)
+            event.attendees = signupsResult.data?.map(s => s.user_id) || []
+            event.signupCount = event.attendees.length
+          } catch (err) {
+            event.attendees = []
+            event.signupCount = 0
+          }
+        }
 
-    return unsubscribe
+        setMeetups(events)
+      } catch (err) {
+        console.error('获取约咖列表失败:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
   }, [])
 
   // 检查相遇通知
   useEffect(() => {
+    if (!user) return
+
+    const checkNotifications = async () => {
+      try {
+        const notifs = await checkEncounterNotifications(user.id)
+        if (notifs.length > 0) {
+          setNotifications(notifs)
+        }
+      } catch (err) {
+        console.error('检查相遇通知失败:', err)
+      }
+    }
+
     checkNotifications()
   }, [user])
 
@@ -124,12 +148,12 @@ export default function Home() {
       return
     }
 
-    if (meetup.creatorId === user.uid) {
+    if (meetup.creatorId === user.id) {
       alert('不能报名自己发布的活动')
       return
     }
 
-    if (meetup.attendees?.includes(user.uid)) {
+    if (meetup.attendees?.includes(user.id)) {
       alert('你已经报名了这个活动')
       return
     }
@@ -142,22 +166,24 @@ export default function Home() {
     setJoiningId(meetup.id)
 
     try {
-      const meetupRef = doc(db, 'meetups', meetup.id)
+      await signupsApi.create(meetup.id, user.id)
 
-      // 检查是否会满员
-      const newAttendees = [...(meetup.attendees || []), user.uid]
-      const updates = {
-        attendees: arrayUnion(user.uid)
-      }
-
-      if (newAttendees.length >= meetup.maxPeople) {
-        updates.status = 'full'
-      }
-
-      await updateDoc(meetupRef, updates)
+      // 更新本地状态
+      setMeetups(prev => prev.map(m => {
+        if (m.id === meetup.id) {
+          const newAttendees = [...(m.attendees || []), user.id]
+          const isFull = newAttendees.length >= m.maxPeople
+          return {
+            ...m,
+            attendees: newAttendees,
+            status: isFull ? 'full' : m.status
+          }
+        }
+        return m
+      }))
     } catch (err) {
       console.error('报名失败:', err)
-      alert('报名失败，请重试')
+      alert(err.message || '报名失败，请重试')
     } finally {
       setJoiningId(null)
     }
@@ -172,12 +198,8 @@ export default function Home() {
     setCompletingId(meetup.id)
 
     try {
-      const meetupRef = doc(db, 'meetups', meetup.id)
-
       // 更新活动状态为 done
-      await updateDoc(meetupRef, {
-        status: 'done'
-      })
+      await eventsApi.updateStatus(meetup.id, 'done')
 
       // 创建相遇记录和评价任务
       if (meetup.attendees && meetup.attendees.length >= 2) {
@@ -186,10 +208,15 @@ export default function Home() {
 
         // 提示创建者
         alert('活动已完成！已为参与者记录相遇次数，并发送评价邀请。')
-
-        // 检查是否有新的相遇通知
-        setTimeout(() => checkNotifications(), 1000)
       }
+
+      // 更新本地状态
+      setMeetups(prev => prev.map(m => {
+        if (m.id === meetup.id) {
+          return { ...m, status: 'done' }
+        }
+        return m
+      }))
 
       setSelectedMeetup(null)
     } catch (err) {
@@ -269,7 +296,7 @@ export default function Home() {
           filteredMeetups.map(meetup => {
             const slot = TIME_SLOT_CONFIG[meetup.timeSlot]
             const activity = ACTIVITY_CONFIG[meetup.activityType]
-            const isJoined = meetup.attendees?.includes(user?.uid)
+            const isJoined = meetup.attendees?.includes(user?.id)
             const isFull = meetup.attendees?.length >= meetup.maxPeople
             const spotsLeft = meetup.maxPeople - (meetup.attendees?.length || 0)
 
@@ -327,9 +354,9 @@ export default function Home() {
                 <div className="flex justify-between items-center">
                   <div className="text-xs text-[#9A7A5C] flex items-center gap-1">
                     <span className="w-5 h-5 rounded-full bg-[#E8D5BC] flex items-center justify-center text-[9px]">
-                      {meetup.creatorId === user?.uid ? '我' : '👤'}
+                      {meetup.creatorId === user?.id ? '我' : '👤'}
                     </span>
-                    {meetup.creatorId === user?.uid ? '我发布的' : '等你加入'}
+                    {meetup.creatorId === user?.id ? '我发布的' : '等你加入'}
                   </div>
                   <div className={`text-xs px-3 py-1 rounded-full ${
                     isJoined ? 'bg-[#F0E6D6] text-[#A0714F]' : 'bg-[#2C1A0E] text-white'
@@ -429,10 +456,10 @@ export default function Home() {
               <div className="text-xs text-[#9A7A5C] mb-2">发起人</div>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#E8D5BC] flex items-center justify-center">
-                  {selectedMeetup.creatorId === user?.uid ? '我' : '👤'}
+                  {selectedMeetup.creatorId === user?.id ? '我' : '👤'}
                 </div>
                 <div className="text-sm text-[#2C1A0E]">
-                  {selectedMeetup.creatorId === user?.uid ? '我发起的' : '等你加入'}
+                  {selectedMeetup.creatorId === user?.id ? '我发起的' : '等你加入'}
                 </div>
               </div>
             </div>
@@ -445,7 +472,7 @@ export default function Home() {
             )}
 
             {/* 创建者操作按钮 */}
-            {selectedMeetup.creatorId === user?.uid && selectedMeetup.status !== 'done' && (
+            {selectedMeetup.creatorId === user?.id && selectedMeetup.status !== 'done' && (
               <div className="mb-4 flex gap-2">
                 <button
                   onClick={() => handleCompleteMeetup(selectedMeetup)}
@@ -465,15 +492,15 @@ export default function Home() {
                 joiningId === selectedMeetup.id ||
                 selectedMeetup.status === 'done' ||
                 selectedMeetup.attendees?.length >= selectedMeetup.maxPeople ||
-                selectedMeetup.attendees?.includes(user?.uid) ||
-                selectedMeetup.creatorId === user?.uid
+                selectedMeetup.attendees?.includes(user?.id) ||
+                selectedMeetup.creatorId === user?.id
               }
               className={`w-full py-4 rounded-xl text-sm font-medium transition-colors ${
                 selectedMeetup.status === 'done'
                   ? 'bg-[#F0F0F0] text-[#888888] cursor-default'
-                  : selectedMeetup.attendees?.includes(user?.uid)
+                  : selectedMeetup.attendees?.includes(user?.id)
                     ? 'bg-[#F0E6D6] text-[#A0714F]'
-                    : selectedMeetup.creatorId === user?.uid
+                    : selectedMeetup.creatorId === user?.id
                       ? 'bg-[#F0E6D6] text-[#A0714F] cursor-default'
                       : selectedMeetup.attendees?.length >= selectedMeetup.maxPeople
                         ? 'bg-[#F5E6E6] text-[#A05050] cursor-default'
@@ -486,9 +513,9 @@ export default function Home() {
                   ? '处理中…'
                   : joiningId === selectedMeetup.id
                     ? '报名中…'
-                    : selectedMeetup.attendees?.includes(user?.uid)
+                    : selectedMeetup.attendees?.includes(user?.id)
                       ? '已报名 ✓'
-                      : selectedMeetup.creatorId === user?.uid
+                      : selectedMeetup.creatorId === user?.id
                         ? '我发起的活动'
                         : selectedMeetup.attendees?.length >= selectedMeetup.maxPeople
                           ? '已满员'

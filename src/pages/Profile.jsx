@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, onSnapshot, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserEncounters } from '../lib/encounters'
 import { getPendingReviews, submitReview, getPunctualityRate } from '../lib/reviews'
+import { checkinsApi, eventsApi } from '../lib/api'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -28,20 +27,12 @@ export default function Profile() {
     const fetchStats = async () => {
       try {
         // 获取打卡次数
-        const checkinsQuery = query(
-          collection(db, 'checkins'),
-          where('userId', '==', user.uid)
-        )
-        const checkinsSnapshot = await getDocs(checkinsQuery)
-        const checkinCount = checkinsSnapshot.size
+        const checkinsResult = await checkinsApi.list({ user_id: user.id })
+        const checkinCount = checkinsResult.data?.length || 0
 
         // 获取约咖次数（作为创建者）
-        const meetupsCreatedQuery = query(
-          collection(db, 'meetups'),
-          where('creatorId', '==', user.uid)
-        )
-        const meetupsCreatedSnapshot = await getDocs(meetupsCreatedQuery)
-        const meetupCount = meetupsCreatedSnapshot.size
+        const eventsResult = await eventsApi.list({ status: 'done' })
+        const meetupCount = (eventsResult.data || []).filter(e => e.creator_id === user.id).length
 
         setStats({ checkinCount, meetupCount })
       } catch (err) {
@@ -58,7 +49,7 @@ export default function Profile() {
 
     const fetchPunctuality = async () => {
       try {
-        const rate = await getPunctualityRate(user.uid)
+        const rate = await getPunctualityRate(user.id)
         setPunctuality(rate)
       } catch (err) {
         console.error('获取守时率失败:', err)
@@ -74,7 +65,7 @@ export default function Profile() {
 
     const fetchEncounters = async () => {
       try {
-        const encountersData = await getUserEncounters(user.uid)
+        const encountersData = await getUserEncounters(user.id)
         setEncounters(encountersData)
       } catch (err) {
         console.error('获取同桌记录失败:', err)
@@ -90,7 +81,7 @@ export default function Profile() {
 
     const fetchPendingReviews = async () => {
       try {
-        const reviews = await getPendingReviews(user.uid)
+        const reviews = await getPendingReviews(user.id)
         setPendingReviews(reviews)
       } catch (err) {
         console.error('获取待评价失败:', err)
@@ -150,7 +141,7 @@ export default function Profile() {
     setReviewingState({})
 
     // 刷新待评价列表
-    const reviews = await getPendingReviews(user.uid)
+    const reviews = await getPendingReviews(user.id)
     setPendingReviews(reviews)
   }
 
@@ -370,7 +361,7 @@ export default function Profile() {
                         👤
                       </div>
                       <div className="text-sm text-[#2C1A0E]">
-                        {review.reviewerId === user.uid
+                        {review.reviewerId === user.id
                           ? '你自己'
                           : '其他参与者'}
                       </div>

@@ -1,17 +1,8 @@
 import { useState } from 'react'
-import { signInAnonymously, updateProfile } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
-import emailjs from '@emailjs/browser'
+import { useAuth } from '../contexts/AuthContext'
 
-const EMAILJS_SERVICE_ID = 'service_vfamyld'
-const EMAILJS_TEMPLATE_ID = 'template_5pxfw6n'
-const EMAILJS_PUBLIC_KEY = 'Y8jcjpZJTGc3cRO_C'
-
-// 生成6位验证码
-function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
+// Workers API 地址
+const WORKER_API = import.meta.env.VITE_WORKER_API
 
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('')
@@ -19,8 +10,7 @@ export default function Login({ onLoginSuccess }) {
   const [step, setStep] = useState('email')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [savedCode, setSavedCode] = useState('')
-  const [codeExpiry, setCodeExpiry] = useState(null)
+  const { login } = useAuth()
 
   const handleSendCode = async (e) => {
     e.preventDefault()
@@ -35,22 +25,23 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-      const newCode = generateCode()
-      const expiry = Date.now() + 5 * 60 * 1000 // 5分钟后过期
+      // 调用 Workers API 发送验证码邮件
+      const response = await fetch(`${WORKER_API}/api/sms/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      })
 
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        { code: newCode, to_email: email },
-        EMAILJS_PUBLIC_KEY
-      )
+      const result = await response.json()
 
-      setSavedCode(newCode)
-      setCodeExpiry(expiry)
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || '发送验证码失败')
+      }
+
       setStep('code')
     } catch (err) {
       console.error('发送失败:', err)
-      setError('发送失败，请稍后重试')
+      setError(err.message || '发送失败，请稍后重试')
     } finally {
       setLoading(false)
     }
@@ -67,36 +58,37 @@ export default function Login({ onLoginSuccess }) {
       return
     }
 
-    if (Date.now() > codeExpiry) {
-      setError('验证码已过期，请重新获取')
-      setLoading(false)
-      return
-    }
-
-    if (code !== savedCode) {
-      setError('验证码错误')
-      setLoading(false)
-      return
-    }
-
     try {
-      const result = await signInAnonymously(auth)
-      const user = result.user
-
-      // 检查是否已有用户资料
-      const userDoc = await getDoc(doc(db, 'users', user.uid))
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', user.uid), {
+      // 调用 Workers API 验证验证码
+      const response = await fetch(`${WORKER_API}/api/sms/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: email,
-          createdAt: new Date(),
-          uid: user.uid
+          code: code
         })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || '验证失败')
       }
+
+      // Workers API 返回用户信息
+      const userData = result.data.user
+
+      // 调用AuthContext的login方法，保存到localStorage
+      login({
+        id: userData.id,
+        uid: userData.id,
+        email: userData.email
+      })
 
       onLoginSuccess()
     } catch (err) {
-      console.error('登录失败:', err)
-      setError('登录失败，请重试')
+      console.error('验证失败:', err)
+      setError(err.message || '验证失败，请重试')
     } finally {
       setLoading(false)
     }

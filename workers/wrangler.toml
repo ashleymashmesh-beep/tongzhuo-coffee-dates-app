@@ -1,19 +1,14 @@
-name = "tongzhuo-sms"
+name = "tongzhuo-api"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
-# 环境变量（敏感信息，不要提交到git）
-# 在 Cloudflare 控制台设置，或使用 wrangler secret put
-# YUNTONGXUN_ACCOUNT_SID
-# YUNTONGXUN_ACCOUNT_TOKEN
-# YUNTONGXUN_APP_ID
-
-# KV 命名空间（用于存储验证码）
-# 需要先创建: wrangler kv namespace create SMS_CODES
-[[kv_namespaces]]
-binding = "SMS_CODES"
-id = "0c2569cdc427493e9af4f5056cf73f48"
+# D1 数据库绑定
+# 创建命令: wrangler d1 create tongzhuo-db
+[[d1_databases]]
+binding = "DB"
+database_name = "tongzhuo-db"
+database_id = "427cb14f-dbf5-444c-a5aa-72f230afada0"
 
 # CORS 允许的前端域名
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5174,https://tongzhuo.vercel.app"
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,https://tongzhuo.vercel.app"

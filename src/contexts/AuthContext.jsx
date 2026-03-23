@@ -1,79 +1,113 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
+import { usersApi } from '../lib/api'
 
 const AuthContext = createContext(null)
+
+const STORAGE_KEY = 'tongzhuo_user'
+
+// 从localStorage获取用户信息
+function getStoredUser() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY)
+    if (data) {
+      return JSON.parse(data)
+    }
+  } catch (err) {
+    console.error('读取localStorage失败:', err)
+  }
+  return null
+}
+
+// 保存用户信息到localStorage
+function setStoredUser(user) {
+  try {
+    if (user) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch (err) {
+    console.error('写入localStorage失败:', err)
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 监听登录状态变化
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('=== onAuthStateChanged 触发 ===')
-      console.log('firebaseUser:', firebaseUser)
+    // 从localStorage读取用户信息
+    const storedUser = getStoredUser()
+    console.log('=== 从localStorage读取用户 ===')
+    console.log('storedUser:', storedUser)
 
-      if (firebaseUser) {
-        console.log('用户已登录，uid:', firebaseUser.uid)
-        console.log('手机号:', firebaseUser.phoneNumber)
-
-        try {
-          // 获取用户额外信息
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-          console.log('用户文档存在:', userDoc.exists())
-
-          if (userDoc.exists()) {
-            console.log('用户数据:', userDoc.data())
-            setUser({
-              uid: firebaseUser.uid,
-              phoneNumber: firebaseUser.phoneNumber,
-              ...userDoc.data()
-            })
-          } else {
-            console.log('新用户，创建用户文档')
-            // 新用户，自动创建基础用户记录
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              nickname: null,
-              avatar: null,
-              bio: null,
-              city: null,
-              createdAt: new Date().toISOString()
-            })
-            setUser({
-              uid: firebaseUser.uid,
-              phoneNumber: firebaseUser.phoneNumber,
-              isNewUser: true
-            })
-          }
-        } catch (err) {
-          console.error('获取用户数据失败，使用基础信息:', err)
-          // 即使读取失败也用基础信息继续
-          setUser({
-            uid: firebaseUser.uid,
-            phoneNumber: firebaseUser.phoneNumber
-          })
-        }
-      } else {
-        console.log('用户未登录')
-        setUser(null)
-      }
-      console.log('设置 loading 为 false')
+    if (storedUser) {
+      // 从Workers API获取完整用户信息
+      loadUserFromAPI(storedUser.id, storedUser)
+    } else {
       setLoading(false)
-    })
-
-    return unsubscribe
+    }
   }, [])
 
+  // 从Workers API加载用户数据
+  const loadUserFromAPI = async (userId, storedUser) => {
+    try {
+      const result = await usersApi.get(userId)
+      const apiUser = result.data
+
+      if (apiUser) {
+        console.log('用户数据:', apiUser)
+        setUser({
+          id: apiUser.id,
+          uid: apiUser.id, // 兼容旧代码
+          email: apiUser.email,
+          nickname: apiUser.nickname,
+          avatar: apiUser.avatar,
+          bio: apiUser.bio,
+          city: apiUser.city
+        })
+      } else {
+        // 如果API中没有用户数据，使用localStorage的数据
+        console.log('API中无用户数据，使用localStorage数据')
+        setUser({
+          id: storedUser.id,
+          uid: storedUser.id, // 兼容旧代码
+          email: storedUser.email
+        })
+      }
+    } catch (err) {
+      console.error('获取用户数据失败，使用localStorage数据:', err)
+      // 使用localStorage的数据，确保id和uid都存在
+      setUser({
+        id: storedUser.id,
+        uid: storedUser.id, // 兼容旧代码
+        email: storedUser.email
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 登录（由Login.jsx调用）
+  const login = (userData) => {
+    console.log('=== 登录 ===', userData)
+    const userWithUid = {
+      ...userData,
+      uid: userData.id // 兼容旧代码
+    }
+    setUser(userWithUid)
+    setStoredUser(userWithUid)
+  }
+
   // 登出
-  const logout = async () => {
-    await auth.signOut()
+  const logout = () => {
+    console.log('=== 登出 ===')
     setUser(null)
+    setStoredUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
