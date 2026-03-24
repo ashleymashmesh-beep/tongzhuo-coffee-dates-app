@@ -82,7 +82,7 @@ export async function getCurrentLocation() {
 }
 
 /**
- * 搜索附近的咖啡馆
+ * 搜索附近的咖啡馆（需要定位）
  * @param {Object} location - {longitude, latitude} 中心点坐标
  * @param {string} keyword - 搜索关键词，默认"咖啡"
  * @param {number} radius - 搜索半径（米），默认 2000
@@ -120,6 +120,51 @@ export async function searchNearbyCafes(location, keyword = '咖啡', radius = 2
           resolve(cafes)
         } else {
           reject(new Error('搜索失败，请检查位置权限'))
+        }
+      })
+    })
+  })
+}
+
+/**
+ * 关键词搜索全国咖啡馆（不需要定位）
+ * @param {string} keyword - 搜索关键词
+ * @param {string} city - 指定城市，空字符串表示全国
+ * @returns {Promise<Array>} 咖啡馆列表
+ */
+export async function searchCafesByKeyword(keyword = '咖啡', city = '') {
+  if (!isLoaded) {
+    await initAmap()
+  }
+
+  return new Promise((resolve, reject) => {
+    AMap.plugin('AMap.PlaceSearch', () => {
+      placeSearch = new AMap.PlaceSearch({
+        type: '餐饮服务', // 兴趣点类别
+        pageSize: 20, // 每页显示结果数
+        pageIndex: 1, // 页码
+        extensions: 'all', // 返回完整信息
+        city: city || '全国' // 搜索范围
+      })
+
+      placeSearch.search(keyword, (status, result) => {
+        if (status === 'complete' && result.poiList?.pois) {
+          // 标准化返回数据
+          const cafes = result.poiList.pois.map(poi => ({
+            id: poi.id,
+            name: poi.name,
+            address: poi.address || '',
+            city: poi.cityname || '',
+            location: {
+              longitude: poi.location?.lng,
+              latitude: poi.location?.lat
+            },
+            tel: poi.tel || '',
+            rating: poi.rating || null
+          }))
+          resolve(cafes)
+        } else {
+          reject(new Error('未找到相关咖啡馆'))
         }
       })
     })

@@ -238,6 +238,82 @@ async function verifySmsCode(request, env) {
   }
 }
 
+// ==================== 地点搜索 API ====================
+
+/**
+ * 搜索地点（咖啡馆）
+ * GET /api/places/search?keyword=xxx
+ */
+async function searchPlaces(request, env) {
+  try {
+    const url = new URL(request.url)
+    const keyword = url.searchParams.get('keyword') || '咖啡'
+
+    if (!env.AMAP_KEY) {
+      console.error('[AMAP] API Key 未配置')
+      return addCorsHeaders(errorResponse('高德地图 API Key 未配置', 500))
+    }
+
+    console.log('[AMAP] 搜索地点:', { keyword })
+
+    // 调用高德 POI 搜索 API - 不指定城市，搜索全国，types=050000 表示餐饮服务大类
+    const amapUrl = `https://restapi.amap.com/v3/place/text?key=${env.AMAP_KEY}&keywords=${encodeURIComponent(keyword)}&types=050000&pageSize=20&page=1&extensions=all`
+
+    console.log('[AMAP] 请求 URL:', amapUrl.replace(env.AMAP_KEY, '***'))
+
+    const amapResponse = await fetch(amapUrl)
+    const responseText = await amapResponse.text()
+
+    console.log('[AMAP] 响应状态:', amapResponse.status)
+
+    if (!amapResponse.ok) {
+      console.error('[AMAP] HTTP 错误:', responseText)
+      return addCorsHeaders(errorResponse('HTTP 请求失败', 500))
+    }
+
+    let amapData
+    try {
+      amapData = JSON.parse(responseText)
+    } catch (e) {
+      console.error('[AMAP] JSON 解析失败:', responseText)
+      return addCorsHeaders(errorResponse('API 响应解析失败', 500))
+    }
+
+    console.log('[AMAP] 响应数据:', JSON.stringify(amapData))
+
+    // 从 response.pois 读取结果
+    if (amapData.status !== '1') {
+      console.error('[AMAP] API 返回错误:', amapData.info, amapData.infocode)
+      return addCorsHeaders(errorResponse('搜索失败: ' + (amapData.info || '未知错误'), 500))
+    }
+
+    const pois = amapData.pois || []
+    console.log('[AMAP] POI 数量:', pois.length)
+
+    // 标准化返回数据
+    const places = pois.map(poi => ({
+      id: poi.id,
+      name: poi.name,
+      address: poi.address || '',
+      city: poi.cityname || '',
+      location: poi.location ? {
+        longitude: parseFloat(poi.location.split(',')[0]),
+        latitude: parseFloat(poi.location.split(',')[1])
+      } : null,
+      tel: poi.tel || ''
+    }))
+
+    return addCorsHeaders(jsonResponse({
+      success: true,
+      data: places
+    }))
+
+  } catch (error) {
+    console.error('[AMAP] 搜索地点失败:', error)
+    return addCorsHeaders(errorResponse('搜索失败，请重试', 500))
+  }
+}
+
 // ==================== 用户 API ====================
 
 /**
@@ -800,6 +876,11 @@ export default {
     }
     if (path === '/api/sms/verify' && request.method === 'POST') {
       return verifySmsCode(request, env)
+    }
+
+    // 地点搜索 API
+    if (path === '/api/places/search' && request.method === 'GET') {
+      return searchPlaces(request, env)
     }
 
     // 用户 API

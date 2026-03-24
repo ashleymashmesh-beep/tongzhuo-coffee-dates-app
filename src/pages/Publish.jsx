@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { eventsApi } from '../lib/api'
-import { initAmap, getCurrentLocation, searchNearbyCafes, formatDistance } from '../lib/amap'
+
+// Workers API 地址
+const WORKER_API = import.meta.env.VITE_WORKER_API
 
 // 活动类型配置
 const ACTIVITY_TYPES = [
@@ -49,7 +51,6 @@ export default function Publish() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
-  const [userLocation, setUserLocation] = useState(null)
 
   // 手动输入咖啡馆状态
   const [isManualInput, setIsManualInput] = useState(false)
@@ -94,47 +95,39 @@ export default function Publish() {
     return `${dateLabel}・${selectedSpecificTime}`
   }
 
-  // 初始化定位（静默失败）
-  useEffect(() => {
-    const init = async () => {
-      try {
-        await initAmap()
-        const location = await getCurrentLocation()
-        setUserLocation(location)
-
-        // 自动搜索附近咖啡馆
-        if (location) {
-          handleSearchCafes(location)
-        }
-      } catch (err) {
-        console.log('定位不可用，使用手动输入模式')
-        // 定位失败时不显示错误，默认使用手动输入
-        setIsManualInput(true)
-      }
-    }
-    init()
-  }, [])
-
   // 搜索咖啡馆
-  const handleSearchCafes = async (location = userLocation) => {
-    if (!location) {
-      setIsManualInput(true)
+  const handleSearchCafes = async () => {
+    const keyword = searchKeyword.trim()
+
+    if (!keyword) {
+      alert('请输入咖啡馆名称')
       return
     }
 
     setSearching(true)
 
     try {
-      const cafes = await searchNearbyCafes(
-        location,
-        searchKeyword || '咖啡',
-        3000 // 搜索半径 3km
-      )
+      const response = await fetch(`${WORKER_API}/api/places/search?keyword=${encodeURIComponent(keyword)}`)
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || '搜索失败')
+      }
+
+      // 标准化数据格式
+      const cafes = result.data.map(place => ({
+        id: place.id,
+        name: place.name,
+        address: place.address,
+        city: place.city,
+        distance: null
+      }))
+
       setSearchResults(cafes)
       setIsManualInput(false)
     } catch (err) {
-      console.error('搜索失败，切换到手动输入:', err)
-      setIsManualInput(true)
+      console.error('搜索失败:', err)
+      alert(err.message || '搜索失败，请重试或使用手动输入')
     } finally {
       setSearching(false)
     }
@@ -318,7 +311,7 @@ export default function Publish() {
                       : 'border-[#E8D5BC] bg-white text-[#9A7A5C]'
                   }`}
                 >
-                  📍 定位搜索
+                  🔍 关键词搜索
                 </button>
                 <button
                   onClick={() => setIsManualInput(true)}
@@ -337,23 +330,19 @@ export default function Publish() {
                 <>
                   {/* 搜索框 */}
                   <div
-                    onClick={() => handleSearchCafes()}
-                    className="bg-white rounded-xl px-4 py-3 flex items-center gap-2 border-2 border-[#E8D5BC] text-[#9A7A5C] text-sm cursor-pointer active:border-[#2C1A0E] transition-colors"
+                    className="bg-white rounded-xl px-4 py-3 flex items-center gap-2 border-2 border-[#E8D5BC] text-[#9A7A5C] text-sm"
                   >
-                    <span>📍</span>
+                    <span>🔍</span>
                     <input
                       type="text"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && handleSearchCafes()}
-                      placeholder="搜索附近咖啡馆…"
+                      placeholder="输入咖啡馆名称（如：星巴克）"
                       className="flex-1 bg-transparent outline-none placeholder:text-[#E8D5BC]"
                     />
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleSearchCafes()
-                      }}
+                      onClick={handleSearchCafes}
                       className="text-xs text-[#2C1A0E] font-medium"
                     >
                       {searching ? '搜索中…' : '搜索'}
@@ -372,7 +361,7 @@ export default function Publish() {
                           <div className="text-sm text-[#2C1A0E] font-medium">{cafe.name}</div>
                           <div className="text-xs text-[#9A7A5C] mt-1">
                             📍 {cafe.address}
-                            {cafe.distance && ` · ${formatDistance(cafe.distance)}`}
+                            {cafe.city && ` · ${cafe.city}`}
                           </div>
                         </div>
                       ))}
@@ -381,7 +370,7 @@ export default function Publish() {
 
                   {searchResults.length === 0 && !searching && (
                     <p className="text-xs text-[#9A7A5C] mt-2 text-center">
-                      点击搜索按钮查找附近咖啡馆
+                      输入咖啡馆名称搜索，或使用手动输入
                     </p>
                   )}
                 </>
