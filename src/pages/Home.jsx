@@ -20,6 +20,34 @@ const ACTIVITY_CONFIG = {
   other: { label: '其他', desc: '自己说', emoji: '✨' }
 }
 
+// 检查活动是否已过期（超过开始时间2小时）
+function isEventExpired(meetup) {
+  if (!meetup.date || !meetup.specific_time) return false
+
+  // 调试：打印实际数据
+  console.log('isEventExpired - meetup.date:', meetup.date, 'meetup.specific_time:', meetup.specific_time)
+
+  // 创建活动开始时间（处理时区问题）
+  const [hours, minutes] = meetup.specific_time.split(':').map(Number)
+  const [year, month, day] = meetup.date.split('-').map(Number)
+
+  // 使用本地时间创建日期对象
+  const eventDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+
+  // 当前时间
+  const now = new Date()
+
+  // 超过2小时即为过期
+  const expiryTime = new Date(eventDateTime.getTime() + 2 * 60 * 60 * 1000)
+
+  console.log('isEventExpired - eventDateTime:', eventDateTime.toLocaleString('zh-CN'),
+              'expiryTime:', expiryTime.toLocaleString('zh-CN'),
+              'now:', now.toLocaleString('zh-CN'),
+              'expired:', now > expiryTime)
+
+  return now > expiryTime
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -300,11 +328,33 @@ export default function Home() {
             const isFull = meetup.attendees?.length >= meetup.maxPeople
             const spotsLeft = meetup.maxPeople - (meetup.attendees?.length || 0)
 
+            // 直接内联判断是否过期（超过开始时间2小时）
+            let isExpired = false
+            try {
+              if (meetup.date && meetup.specificTime) {
+                const [hours, minutes] = meetup.specificTime.split(':').map(Number)
+                const [year, month, day] = meetup.date.split('-').map(Number)
+                const eventDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+                const now = new Date()
+                const expiryTime = new Date(eventDateTime.getTime() + 2 * 60 * 60 * 1000)
+                isExpired = now > expiryTime
+
+                // 调试打印
+                console.log(`[过期检查] ${meetup.cafeName} - 时间:${meetup.date} ${meetup.specificTime}, 过期:${isExpired}`)
+              }
+            } catch (e) {
+              console.error('过期判断出错:', e)
+            }
+
             return (
               <div
                 key={meetup.id}
-                onClick={() => setSelectedMeetup(meetup)}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-[#E8D5BC] active:scale-[0.98] transition-transform cursor-pointer"
+                onClick={() => !isExpired && setSelectedMeetup(meetup)}
+                className={`rounded-2xl p-4 shadow-sm border active:scale-[0.98] transition-transform ${
+                  isExpired
+                    ? 'bg-[#F5F5F5] border-[#E0E0E0] cursor-default opacity-60'
+                    : 'bg-white border-[#E8D5BC] cursor-pointer'
+                }`}
               >
                 {/* 卡片顶部 */}
                 <div className="flex justify-between items-start mb-2">
@@ -317,17 +367,21 @@ export default function Home() {
                     </div>
                   </div>
                   <div className={`text-xs px-3 py-1 rounded-full ${
-                    meetup.status === 'done'
-                      ? 'bg-[#E8E8E8] text-[#888888]'
-                      : isFull
-                        ? 'bg-[#F5E6E6] text-[#A05050]'
-                        : 'bg-[#F0E6D6] text-[#5C3D1E]'
+                    isExpired
+                      ? 'bg-[#D0D0D0] text-[#999999]'
+                      : meetup.status === 'done'
+                        ? 'bg-[#E8E8E8] text-[#888888]'
+                        : isFull
+                          ? 'bg-[#F5E6E6] text-[#A05050]'
+                          : 'bg-[#F0E6D6] text-[#5C3D1E]'
                   }`}>
-                    {meetup.status === 'done'
-                      ? '已结束'
-                      : isFull
-                        ? '已满员'
-                        : `还差${spotsLeft}人`}
+                    {isExpired
+                      ? '已过期'
+                      : meetup.status === 'done'
+                        ? '已结束'
+                        : isFull
+                          ? '已满员'
+                          : `还差${spotsLeft}人`}
                   </div>
                 </div>
 
@@ -358,11 +412,18 @@ export default function Home() {
                     </span>
                     {meetup.creatorId === user?.id ? '我发布的' : '等你加入'}
                   </div>
-                  <div className={`text-xs px-3 py-1 rounded-full ${
-                    isJoined ? 'bg-[#F0E6D6] text-[#A0714F]' : 'bg-[#2C1A0E] text-white'
-                  }`}>
-                    {isJoined ? '已报名' : '查看详情'}
-                  </div>
+                  {!isExpired && (
+                    <div className={`text-xs px-3 py-1 rounded-full ${
+                      isJoined ? 'bg-[#F0E6D6] text-[#A0714F]' : 'bg-[#2C1A0E] text-white'
+                    }`}>
+                      {isJoined ? '已报名' : '查看详情'}
+                    </div>
+                  )}
+                  {isExpired && (
+                    <div className="text-xs px-3 py-1 rounded-full bg-[#E0E0E0] text-[#999999]">
+                      已过期
+                    </div>
+                  )}
                 </div>
               </div>
             )

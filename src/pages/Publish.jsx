@@ -57,20 +57,71 @@ export default function Publish() {
   const [manualCafeName, setManualCafeName] = useState('')
   const [manualCafeAddress, setManualCafeAddress] = useState('')
 
-  // 根据选中的时段生成时间选项
+  // 根据选中的时段生成时间选项（过滤掉过去的时间）
   const timeOptions = useMemo(() => {
     const slot = TIME_SLOTS.find(s => s.id === selectedTimeSlot)
     if (!slot) return []
-    return generateTimeOptions(slot.startHour, slot.endHour)
-  }, [selectedTimeSlot])
+    const allOptions = generateTimeOptions(slot.startHour, slot.endHour)
 
-  // 时段切换时重置具体时间
+    // 如果选择的不是今天，返回所有选项
+    if (!selectedDate) return allOptions
+
+    const today = new Date().toISOString().split('T')[0]
+    if (selectedDate !== today) return allOptions
+
+    // 如果是今天，过滤掉过去的时间
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+
+    return allOptions.filter(time => {
+      const [hour, minute] = time.split(':').map(Number)
+      // 时间必须至少比当前时间晚30分钟
+      const timeDate = new Date()
+      timeDate.setHours(hour, minute, 0, 0)
+      const minDate = new Date(now.getTime() + 30 * 60 * 1000)
+      return timeDate >= minDate
+    })
+  }, [selectedTimeSlot, selectedDate])
+
+  // 时段切换时重置具体时间，选择第一个可用的有效时间
   useEffect(() => {
     const slot = TIME_SLOTS.find(s => s.id === selectedTimeSlot)
-    if (slot) {
+    if (!slot) return
+
+    // 如果不是今天，直接使用时段开始时间
+    if (!selectedDate) {
+      setSelectedSpecificTime(`${String(slot.startHour).padStart(2, '0')}:00`)
+      return
+    }
+
+    const today = new Date().toISOString().split('T')[0]
+    if (selectedDate !== today) {
+      setSelectedSpecificTime(`${String(slot.startHour).padStart(2, '0')}:00`)
+      return
+    }
+
+    // 如果是今天，找到第一个有效的时间（比当前时间晚30分钟）
+    const allOptions = generateTimeOptions(slot.startHour, slot.endHour)
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+
+    const validOption = allOptions.find(time => {
+      const [hour, minute] = time.split(':').map(Number)
+      const timeDate = new Date()
+      timeDate.setHours(hour, minute, 0, 0)
+      const minDate = new Date(now.getTime() + 30 * 60 * 1000)
+      return timeDate >= minDate
+    })
+
+    if (validOption) {
+      setSelectedSpecificTime(validOption)
+    } else {
+      // 如果没有有效时间，使用时段开始时间（会显示为无效状态）
       setSelectedSpecificTime(`${String(slot.startHour).padStart(2, '0')}:00`)
     }
-  }, [selectedTimeSlot])
+  }, [selectedTimeSlot, selectedDate])
 
   // 生成未来 7 天的日期选项
   const dateOptions = Array.from({ length: 7 }, (_, i) => {
@@ -152,6 +203,20 @@ export default function Publish() {
     if (!selectedDate) {
       alert('请选择日期')
       return
+    }
+
+    // 验证选择的时间不能早于当前时间（至少30分钟后）
+    const today = new Date().toISOString().split('T')[0]
+    if (selectedDate === today) {
+      const [hour, minute] = selectedSpecificTime.split(':').map(Number)
+      const selectedDateTime = new Date()
+      selectedDateTime.setHours(hour, minute, 0, 0)
+      const minDateTime = new Date(Date.now() + 30 * 60 * 1000)
+
+      if (selectedDateTime < minDateTime) {
+        alert('活动时间至少需要比当前时间晚30分钟')
+        return
+      }
     }
 
     // 确定要使用的咖啡馆
@@ -261,21 +326,27 @@ export default function Publish() {
 
           {/* 具体时间选择（横向滑动） */}
           <div className="mt-3">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {timeOptions.map(time => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedSpecificTime(time)}
-                  className={`px-4 py-2 rounded-lg border-2 text-xs whitespace-nowrap transition-colors flex-shrink-0 ${
-                    selectedSpecificTime === time
-                      ? 'border-[#2C1A0E] bg-[#2C1A0E] text-white'
-                      : 'border-[#E8D5BC] bg-white text-[#9A7A5C]'
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
+            {timeOptions.length === 0 ? (
+              <p className="text-xs text-[#A0714F] text-center py-2">
+                该时段今天已过，请选择其他时段或明天
+              </p>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {timeOptions.map(time => (
+                  <button
+                    key={time}
+                    onClick={() => setSelectedSpecificTime(time)}
+                    className={`px-4 py-2 rounded-lg border-2 text-xs whitespace-nowrap transition-colors flex-shrink-0 ${
+                      selectedSpecificTime === time
+                        ? 'border-[#2C1A0E] bg-[#2C1A0E] text-white'
+                        : 'border-[#E8D5BC] bg-white text-[#9A7A5C]'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -471,7 +542,7 @@ export default function Publish() {
       {/* 发布按钮 */}
       <button
         onClick={handlePublish}
-        disabled={loading || !selectedDate || !selectedCafe}
+        disabled={loading || !selectedDate || !selectedCafe || timeOptions.length === 0}
         className="fixed bottom-16 left-0 right-0 py-4 bg-[#2C1A0E] text-white text-sm font-medium tracking-wider disabled:opacity-50 disabled:cursor-not-allowed z-20"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
       >
